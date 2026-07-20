@@ -15,13 +15,27 @@ function apiKey() {
   return key;
 }
 
+const RATE_LIMIT_STATUSES = new Set([420, 429]);
+const MAX_RETRIES = 3;
+
+async function fetchWithRetry(url) {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url);
+    if (!RATE_LIMIT_STATUSES.has(res.status) || attempt >= MAX_RETRIES) {
+      return res;
+    }
+    const delayMs = 1000 * 2 ** attempt;
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+}
+
 async function getPlayerSummaries(steamids) {
   const results = new Map();
   // GetPlayerSummaries accepts up to 100 steamids per call.
   for (let i = 0; i < steamids.length; i += 100) {
     const chunk = steamids.slice(i, i + 100);
     const url = `${BASE}/ISteamUser/GetPlayerSummaries/v2/?key=${apiKey()}&steamids=${chunk.join(',')}`;
-    const res = await fetch(url);
+    const res = await fetchWithRetry(url);
     if (!res.ok) throw new Error(`GetPlayerSummaries failed: ${res.status}`);
     const data = await res.json();
     for (const player of data.response?.players ?? []) {
@@ -33,7 +47,7 @@ async function getPlayerSummaries(steamids) {
 
 async function getFriendList(steamid) {
   const url = `${BASE}/ISteamUser/GetFriendList/v1/?key=${apiKey()}&steamid=${steamid}&relationship=friend`;
-  const res = await fetch(url);
+  const res = await fetchWithRetry(url);
   if (res.status === 401) throw new FriendsListPrivateError();
   if (!res.ok) throw new Error(`GetFriendList failed: ${res.status}`);
   const data = await res.json();
@@ -42,7 +56,7 @@ async function getFriendList(steamid) {
 
 async function getOwnedGames(steamid) {
   const url = `${BASE}/IPlayerService/GetOwnedGames/v1/?key=${apiKey()}&steamid=${steamid}&include_appinfo=1&include_played_free_games=1`;
-  const res = await fetch(url);
+  const res = await fetchWithRetry(url);
   if (!res.ok) throw new Error(`GetOwnedGames failed: ${res.status}`);
   const data = await res.json();
   const games = data.response?.games;

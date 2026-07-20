@@ -51,14 +51,20 @@ function askToPlay(friend, game) {
   const message = `Hey! Want to play ${game.name}?`;
   const steamUri = `steam://friends/message/${friend.steamid}`;
 
-  const copyPromise = navigator.clipboard
-    ? navigator.clipboard.writeText(message).catch(() => {})
-    : Promise.resolve();
+  // A real <a> click is handled more reliably by browsers for custom
+  // protocols than a scripted window.location.href assignment.
+  const link = document.createElement('a');
+  link.href = steamUri;
+  link.rel = 'noopener';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 
-  copyPromise.then(() => {
-    window.location.href = steamUri;
-    showToast(`Copied "${message}" — paste it in the Steam chat that just opened.`);
-  });
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(message).catch(() => {});
+  }
+
+  showToast(`Copied "${message}" — paste it in the Steam chat that just opened.`);
 }
 
 function renderFriendCard(friend) {
