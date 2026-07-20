@@ -18,7 +18,10 @@ function showToast(message) {
 async function fetchJson(url, opts) {
   const res = await fetch(url, opts);
   if (res.status === 401) return { unauthenticated: true };
-  if (!res.ok) throw new Error(`Request to ${url} failed: ${res.status}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message || `Request to ${url} failed: ${res.status}`);
+  }
   return res.json();
 }
 

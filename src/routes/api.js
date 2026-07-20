@@ -20,6 +20,7 @@ router.get('/me', requireAuth, async (req, res) => {
       gameCount: ownedGames.games.length,
     });
   } catch (err) {
+    console.error('GET /api/me failed:', err);
     res.status(500).json({ error: 'internal-error', message: err.message });
   }
 });
@@ -32,6 +33,7 @@ router.get('/common-games', requireAuth, async (req, res) => {
     if (err instanceof FriendsListPrivateError) {
       return res.status(200).json({ error: 'friends-private' });
     }
+    console.error('GET /api/common-games failed:', err);
     res.status(500).json({ error: 'internal-error', message: err.message });
   }
 });
