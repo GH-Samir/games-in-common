@@ -10,6 +10,14 @@ const router = express.Router();
 const TEST_STEAMID = '76561197960435530';
 
 router.post('/config/steam-key', async (req, res) => {
+  // Reachable without a session only for first-run setup, before a key exists.
+  // Once a key is configured, changing it requires an authenticated session so
+  // that anyone who can merely reach the server can't silently swap it out.
+  const alreadyConfigured = Boolean(configStore.getConfig().steamApiKey);
+  if (alreadyConfigured && !req.session?.steamid) {
+    return res.status(401).json({ error: 'not-authenticated', message: 'Sign in before changing the configured API key.' });
+  }
+
   const key = (req.body?.steamApiKey || '').trim();
   if (!key) {
     return res.status(400).json({ error: 'missing-key', message: 'Steam API key is required.' });
