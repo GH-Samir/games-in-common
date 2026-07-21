@@ -156,6 +156,42 @@ function renderFriends(data) {
   renderFriendList(allFriends);
 }
 
+function renderProgress(completed, total) {
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  appEl.innerHTML = `
+    <p class="loading">Comparing your library with your friends&hellip;</p>
+    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    <p class="progress-label">${completed} / ${total} friends checked</p>
+  `;
+}
+
+function loadCommonGames() {
+  renderProgress(0, 0);
+
+  const source = new EventSource('/api/common-games/stream');
+
+  source.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    if (msg.type === 'progress') {
+      renderProgress(msg.completed, msg.total);
+    } else if (msg.type === 'done') {
+      source.close();
+      renderFriends(msg.data);
+    } else if (msg.type === 'friends-private') {
+      source.close();
+      appEl.innerHTML = `<p class="error">Your Steam friends list is private. Set it to public in your Steam privacy settings to use this app.</p>`;
+    } else if (msg.type === 'error') {
+      source.close();
+      appEl.innerHTML = `<p class="error">Something went wrong loading your friends: ${escapeHtml(msg.message)}</p>`;
+    }
+  };
+
+  source.onerror = () => {
+    source.close();
+    appEl.innerHTML = `<p class="error">Lost connection while loading your friends. Try refreshing the page.</p>`;
+  };
+}
+
 async function init() {
   const me = await fetchJson('/api/me');
   if (me.unauthenticated) {
@@ -163,23 +199,7 @@ async function init() {
     return;
   }
   renderAccount(me);
-
-  appEl.innerHTML = `<p class="loading">Comparing your library with your friends&hellip;</p>`;
-
-  try {
-    const data = await fetchJson('/api/common-games');
-    if (data.unauthenticated) {
-      renderLoggedOut();
-      return;
-    }
-    if (data.error === 'friends-private') {
-      appEl.innerHTML = `<p class="error">Your Steam friends list is private. Set it to public in your Steam privacy settings to use this app.</p>`;
-      return;
-    }
-    renderFriends(data);
-  } catch (err) {
-    appEl.innerHTML = `<p class="error">Something went wrong loading your friends: ${escapeHtml(err.message)}</p>`;
-  }
+  loadCommonGames();
 }
 
 init();

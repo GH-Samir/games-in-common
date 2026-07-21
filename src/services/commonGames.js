@@ -2,9 +2,10 @@ const { getOwnedGamesCached, getPlayerSummariesCached, getFriendList } = require
 
 const CONCURRENCY_LIMIT = 8;
 
-async function mapWithConcurrency(items, limit, fn) {
+async function mapWithConcurrency(items, limit, fn, onItemDone) {
   const results = new Array(items.length);
   let cursor = 0;
+  let completed = 0;
 
   async function worker() {
     while (cursor < items.length) {
@@ -14,6 +15,8 @@ async function mapWithConcurrency(items, limit, fn) {
       } catch (err) {
         results[index] = { error: err };
       }
+      completed++;
+      onItemDone?.(completed, items.length);
     }
   }
 
@@ -40,11 +43,13 @@ function intersectGames(myGames, theirGames) {
   return common;
 }
 
-async function getCommonGamesForUser(mySteamId) {
+async function getCommonGamesForUser(mySteamId, onProgress) {
   const [myGamesResult, friendSteamIds] = await Promise.all([
     getOwnedGamesCached(mySteamId),
     getFriendList(mySteamId),
   ]);
+
+  onProgress?.(0, friendSteamIds.length);
 
   const myGames = myGamesResult.games;
 
@@ -54,7 +59,8 @@ async function getCommonGamesForUser(mySteamId) {
     async (friendSteamId) => {
       const result = await getOwnedGamesCached(friendSteamId);
       return { steamid: friendSteamId, ...result };
-    }
+    },
+    onProgress
   );
 
   const allSteamIds = [mySteamId, ...friendSteamIds];

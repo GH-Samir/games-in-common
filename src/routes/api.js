@@ -63,4 +63,30 @@ router.get('/common-games', requireAuth, async (req, res) => {
   }
 });
 
+router.get('/common-games/stream', requireAuth, async (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+  });
+
+  const send = (payload) => res.write(`data: ${JSON.stringify(payload)}\n\n`);
+
+  try {
+    const data = await getCommonGamesForUser(req.session.steamid, (completed, total) => {
+      send({ type: 'progress', completed, total });
+    });
+    send({ type: 'done', data });
+  } catch (err) {
+    if (err instanceof FriendsListPrivateError) {
+      send({ type: 'friends-private' });
+    } else {
+      console.error('GET /api/common-games/stream failed:', err);
+      send({ type: 'error', message: err.message });
+    }
+  }
+
+  res.end();
+});
+
 module.exports = router;
