@@ -1,4 +1,5 @@
 const cache = require('./cache');
+const configStore = require('./configStore');
 
 const BASE = 'https://api.steampowered.com';
 
@@ -10,8 +11,8 @@ class FriendsListPrivateError extends Error {
 }
 
 function apiKey() {
-  const key = process.env.STEAM_API_KEY;
-  if (!key) throw new Error('STEAM_API_KEY is not set in .env');
+  const key = configStore.getConfig().steamApiKey;
+  if (!key) throw new Error('Steam API key is not configured yet');
   return key;
 }
 

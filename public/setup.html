@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Set up Games in Common</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #121417;
+    color: #e8e9eb;
+  }
+  .card {
+    max-width: 440px;
+    width: 100%;
+    padding: 32px;
+    margin: 24px;
+    background: #1b1e23;
+    border: 1px solid #2a2e35;
+    border-radius: 10px;
+  }
+  h1 { font-size: 1.3rem; margin: 0 0 8px; }
+  p { color: #9aa0a8; font-size: 0.9rem; line-height: 1.5; }
+  a { color: #66c0f4; }
+  input {
+    width: 100%;
+    padding: 10px 12px;
+    margin: 16px 0 8px;
+    background: #121417;
+    border: 1px solid #2a2e35;
+    border-radius: 6px;
+    color: #e8e9eb;
+    font: inherit;
+  }
+  button {
+    width: 100%;
+    padding: 10px 14px;
+    font: inherit;
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    background: #1a9fff;
+    color: #fff;
+  }
+  button:hover { background: #66c0f4; }
+  button:disabled { opacity: 0.6; cursor: default; }
+  .error { color: #e08585; font-size: 0.85rem; min-height: 1.2em; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Set up Games in Common</h1>
+  <p>
+    This app needs a Steam Web API key to look up games and friends.
+    Get a free one at
+    <a href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noopener">steamcommunity.com/dev/apikey</a>
+    (any domain name works, e.g. "localhost").
+  </p>
+  <form id="setup-form">
+    <input type="text" id="key-input" placeholder="Paste your Steam Web API key" autocomplete="off" required>
+    <button type="submit" id="submit-btn">Save and continue</button>
+    <div class="error" id="error"></div>
+  </form>
+</div>
+<script>
+  const form = document.getElementById('setup-form');
+  const input = document.getElementById('key-input');
+  const errorEl = document.getElementById('error');
+  const submitBtn = document.getElementById('submit-btn');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorEl.textContent = '';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Checking key…';
+
+    try {
+      const res = await fetch('/api/config/steam-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ steamApiKey: input.value }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Something went wrong.');
+      }
+      window.location.href = '/';
+    } catch (err) {
+      errorEl.textContent = err.message;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Save and continue';
+    }
+  });
+</script>
+</body>
+</html>

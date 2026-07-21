@@ -17,6 +17,10 @@ function showToast(message) {
 
 async function fetchJson(url, opts) {
   const res = await fetch(url, opts);
+  if (res.redirected && res.url.includes('/setup')) {
+    window.location.href = '/setup';
+    return new Promise(() => {}); // page is navigating away, never resolve
+  }
   if (res.status === 401) return { unauthenticated: true };
   if (!res.ok) {
     const body = await res.json().catch(() => null);

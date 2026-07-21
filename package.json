@@ -2,10 +2,13 @@
   "name": "games-in-common",
   "version": "1.0.0",
   "description": "Find Steam games you have in common with your friends and ask them to play.",
-  "main": "server.js",
+  "author": "samir <mandalsam@outlook.com>",
+  "main": "electron/main.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "electron": "electron .",
+    "dist": "electron-builder"
   },
   "engines": {
     "node": ">=18"
@@ -14,5 +17,33 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-session": "^1.18.0"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.gamesincommon.app",
+    "productName": "Games in Common",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "public/**/*",
+      "src/**/*",
+      "server.js",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Game"
+    }
   }
 }
