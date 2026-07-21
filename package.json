@@ -25,6 +25,7 @@
   "build": {
     "appId": "com.gamesincommon.app",
     "productName": "Games in Common",
+    "publish": null,
     "directories": {
       "output": "release"
     },
