@@ -96,6 +96,23 @@ main {
   margin-bottom: 24px;
 }
 
+.search-input {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent-strong);
+}
+
 .friend-list {
   display: flex;
   flex-direction: column;

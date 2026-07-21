@@ -118,19 +118,42 @@ function renderFriendCard(friend) {
   return card;
 }
 
+let allFriends = [];
+
+function renderFriendList(friends) {
+  const list = document.getElementById('friend-list');
+  list.innerHTML = '';
+  if (friends.length === 0) {
+    list.innerHTML = `<p class="empty">No friends match your search.</p>`;
+    return;
+  }
+  for (const friend of friends) {
+    list.appendChild(renderFriendCard(friend));
+  }
+}
+
 function renderFriends(data) {
-  if (data.friends.length === 0) {
+  allFriends = data.friends;
+
+  if (allFriends.length === 0) {
     appEl.innerHTML = `<p class="empty">No Steam friends found.</p>`;
     return;
   }
 
-  const list = document.createElement('div');
-  list.className = 'friend-list';
-  for (const friend of data.friends) {
-    list.appendChild(renderFriendCard(friend));
-  }
-  appEl.innerHTML = '';
-  appEl.appendChild(list);
+  appEl.innerHTML = `
+    <input type="text" id="friend-search" class="search-input" placeholder="Search friends by name…">
+    <div class="friend-list" id="friend-list"></div>
+  `;
+
+  document.getElementById('friend-search').addEventListener('input', (e) => {
+    const query = e.target.value.trim().toLowerCase();
+    const filtered = query
+      ? allFriends.filter((f) => f.name.toLowerCase().includes(query))
+      : allFriends;
+    renderFriendList(filtered);
+  });
+
+  renderFriendList(allFriends);
 }
 
 async function init() {
