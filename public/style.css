@@ -385,3 +385,169 @@ main {
   border-top: none;
   padding: 12px 0 0;
 }
+
+.friend-discovery {
+  border-top: 1px solid var(--border);
+  padding: 12px 16px;
+}
+
+.discovery-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.discovery-controls select,
+.discovery-controls input {
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font: inherit;
+}
+
+.discovery-controls input {
+  width: 100px;
+}
+
+.discovery-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.discovery-note {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin: 0 0 12px;
+}
+
+.discovery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 560px) {
+  .discovery-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.discovery-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.discovery-card img {
+  width: 100%;
+  aspect-ratio: 460 / 215;
+  object-fit: cover;
+  display: block;
+}
+
+.discovery-card-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 8px 10px 0;
+}
+
+.discovery-card-price {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  padding: 4px 10px;
+}
+
+.discount-badge {
+  background: rgba(108, 192, 103, 0.15);
+  color: var(--success);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+}
+
+.discovery-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px 10px;
+  margin-top: auto;
+}
+
+.discovery-card-actions a {
+  font-size: 0.8rem;
+  color: var(--accent);
+}
+
+.discovery-card-actions button {
+  font-size: 0.8rem;
+  padding: 5px 10px;
+}
+
+.discovery-dice {
+  display: block;
+  margin: 12px auto 0;
+}
+
+.chest-controls {
+  margin-bottom: 16px;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.chest-controls select {
+  padding: 6px 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font: inherit;
+}
+
+.chest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chest-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.chest-row img {
+  width: 92px;
+  aspect-ratio: 460 / 215;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.chest-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.chest-price {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.chest-row a {
+  font-size: 0.85rem;
+  color: var(--accent);
+}

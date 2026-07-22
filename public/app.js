@@ -88,9 +88,12 @@ function renderFriendCard(friend) {
     ${badge}
   `;
 
+  const body = document.createElement('div');
+  body.className = 'friend-body';
+  body.hidden = true;
+
   const gameList = document.createElement('div');
   gameList.className = 'game-list';
-  gameList.hidden = true;
 
   if (friend.gamesVisible && friend.commonGames.length > 0) {
     gameList.innerHTML = friend.commonGames.map((game) => `
@@ -111,12 +114,172 @@ function renderFriendCard(friend) {
   }
 
   header.addEventListener('click', () => {
-    gameList.hidden = !gameList.hidden;
+    body.hidden = !body.hidden;
   });
 
+  body.appendChild(gameList);
+  body.appendChild(renderDiscoverySection(friend));
+
   card.appendChild(header);
-  card.appendChild(gameList);
+  card.appendChild(body);
   return card;
+}
+
+let currenciesCache = null;
+
+async function ensureCurrencies() {
+  if (currenciesCache) return currenciesCache;
+  const data = await fetchJson('/api/currencies');
+  currenciesCache = data.currencies || [];
+  return currenciesCache;
+}
+
+function getSavedCurrency() {
+  return localStorage.getItem('gic-currency') || 'GBP';
+}
+
+function getSavedBudget() {
+  return localStorage.getItem('gic-budget') || '30';
+}
+
+function formatPrice(game) {
+  if (game.isFree) return 'Free to play';
+  if (!game.price) return 'Price unavailable';
+  const { finalFormatted, discountPercent } = game.price;
+  return discountPercent > 0
+    ? `${escapeHtml(finalFormatted)} <span class="discount-badge">-${discountPercent}%</span>`
+    : escapeHtml(finalFormatted);
+}
+
+async function saveToChest(appid) {
+  try {
+    await fetchJson('/api/chest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appid }),
+    });
+    showToast('Saved to your Game Chest.');
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function buildDiscoveryPanel(friend, panel) {
+  const currencies = await ensureCurrencies();
+
+  panel.innerHTML = `
+    <div class="discovery-controls">
+      <select class="discovery-currency">
+        ${currencies.map((c) => `<option value="${escapeHtml(c.code)}">${escapeHtml(c.code)} (${escapeHtml(c.symbol)})</option>`).join('')}
+      </select>
+      <input type="number" class="discovery-budget" min="0" step="1" placeholder="Max price">
+      <button data-action="search">Find games</button>
+    </div>
+    <label class="discovery-checkbox">
+      <input type="checkbox" class="discovery-multiplayer-only">
+      Show multiplayer games only
+    </label>
+    <div class="discovery-results"></div>
+  `;
+
+  const currencySelect = panel.querySelector('.discovery-currency');
+  const budgetInput = panel.querySelector('.discovery-budget');
+  const multiplayerCheckbox = panel.querySelector('.discovery-multiplayer-only');
+  const resultsEl = panel.querySelector('.discovery-results');
+
+  currencySelect.value = getSavedCurrency();
+  budgetInput.value = getSavedBudget();
+  multiplayerCheckbox.checked = localStorage.getItem('gic-multiplayer-only') === 'true';
+
+  let seenAppIds = [];
+
+  function renderResults(data) {
+    const { games, genres, bothVisible } = data;
+    let html = '';
+
+    if (genres?.length > 0) {
+      const who = bothVisible ? 'you both' : 'you';
+      html += `<p class="discovery-note">Prioritizing genres ${who} play most: ${genres.map(escapeHtml).join(', ')}</p>`;
+    }
+
+    if (games.length === 0) {
+      html += `<p class="empty">No more games found in this budget. Try a higher budget, or check back later.</p>`;
+      resultsEl.innerHTML = html;
+      return;
+    }
+
+    html += `<div class="discovery-grid">${games.map((game) => `
+      <div class="discovery-card" data-appid="${game.appid}">
+        ${game.headerImage ? `<img src="${escapeHtml(game.headerImage)}" alt="">` : ''}
+        <div class="discovery-card-name">${escapeHtml(game.name)}</div>
+        <div class="discovery-card-price">${formatPrice(game)}</div>
+        <div class="discovery-card-actions">
+          <a href="${escapeHtml(game.storeUrl)}" target="_blank" rel="noopener">View on Steam</a>
+          <button class="secondary" data-action="save" title="Save to Game Chest">🧰 Save</button>
+        </div>
+      </div>
+    `).join('')}</div>`;
+    html += `<button class="secondary discovery-dice" data-action="dice">🎲 Show 6 more</button>`;
+
+    resultsEl.innerHTML = html;
+
+    resultsEl.querySelectorAll('[data-action="save"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        saveToChest(Number(btn.closest('.discovery-card').dataset.appid));
+      });
+    });
+
+    resultsEl.querySelector('[data-action="dice"]').addEventListener('click', () => search(false));
+  }
+
+  async function search(reset) {
+    const currency = currencySelect.value;
+    const budget = budgetInput.value;
+    const multiplayerOnly = multiplayerCheckbox.checked;
+    localStorage.setItem('gic-currency', currency);
+    localStorage.setItem('gic-budget', budget);
+    localStorage.setItem('gic-multiplayer-only', String(multiplayerOnly));
+
+    if (reset) seenAppIds = [];
+
+    resultsEl.innerHTML = `<p class="loading">Finding games&hellip;</p>`;
+    try {
+      const params = new URLSearchParams({ currency, maxPrice: budget, multiplayerOnly: String(multiplayerOnly), seen: seenAppIds.join(',') });
+      const data = await fetchJson(`/api/friends/${friend.steamid}/recommendations?${params}`);
+      seenAppIds.push(...data.games.map((g) => g.appid));
+      renderResults(data);
+    } catch (err) {
+      resultsEl.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+    }
+  }
+
+  panel.querySelector('[data-action="search"]').addEventListener('click', () => search(true));
+
+  search(true);
+}
+
+function renderDiscoverySection(friend) {
+  const container = document.createElement('div');
+  container.className = 'friend-discovery';
+  container.innerHTML = `<button class="secondary" data-action="find-games">🎮 Find new games we might like</button>`;
+
+  const panel = document.createElement('div');
+  panel.className = 'discovery-panel';
+  panel.hidden = true;
+  container.appendChild(panel);
+
+  let panelBuilt = false;
+
+  container.querySelector('[data-action="find-games"]').addEventListener('click', (e) => {
+    e.stopPropagation();
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden && !panelBuilt) {
+      panelBuilt = true;
+      buildDiscoveryPanel(friend, panel);
+    }
+  });
+
+  return container;
 }
 
 let allFriends = [];
@@ -166,6 +329,10 @@ function renderProgress(completed, total) {
   `;
 }
 
+function revealNav() {
+  document.getElementById('view-nav').hidden = false;
+}
+
 function loadCommonGames() {
   renderProgress(0, 0);
 
@@ -183,12 +350,15 @@ function loadCommonGames() {
     } else if (msg.type === 'done') {
       source.close();
       renderFriends(msg.data);
+      revealNav();
     } else if (msg.type === 'friends-private') {
       source.close();
       appEl.innerHTML = `<p class="error">Your Steam friends list is private. Set it to public in your Steam privacy settings to use this app.</p>`;
+      revealNav();
     } else if (msg.type === 'error') {
       source.close();
       appEl.innerHTML = `<p class="error">Something went wrong loading your friends: ${escapeHtml(msg.message)}</p>`;
+      revealNav();
     }
   };
 
@@ -196,6 +366,7 @@ function loadCommonGames() {
     source.close();
     if (!stale()) {
       appEl.innerHTML = `<p class="error">Lost connection while loading your friends. Try refreshing the page.</p>`;
+      revealNav();
     }
   };
 }
@@ -521,6 +692,71 @@ async function loadGroups() {
   }
 }
 
+function renderChestView(games, currencies, currency) {
+  appEl.innerHTML = `
+    <div class="chest-controls">
+      <label>Currency:
+        <select id="chest-currency">
+          ${currencies.map((c) => `<option value="${escapeHtml(c.code)}" ${c.code === currency ? 'selected' : ''}>${escapeHtml(c.code)} (${escapeHtml(c.symbol)})</option>`).join('')}
+        </select>
+      </label>
+    </div>
+    <div class="chest-list" id="chest-list"></div>
+  `;
+
+  document.getElementById('chest-currency').addEventListener('change', (e) => {
+    localStorage.setItem('gic-currency', e.target.value);
+    loadChest();
+  });
+
+  const list = document.getElementById('chest-list');
+  if (games.length === 0) {
+    list.innerHTML = `<p class="empty">No saved games yet. Save games from the "Find new games" panel on a friend's card.</p>`;
+    return;
+  }
+
+  list.innerHTML = games.map((game) => `
+    <div class="chest-row" data-appid="${game.appid}">
+      ${game.headerImage ? `<img src="${escapeHtml(game.headerImage)}" alt="">` : ''}
+      <div class="chest-name">${escapeHtml(game.name)}</div>
+      <div class="chest-price">${formatPrice(game)}</div>
+      <a href="${escapeHtml(game.storeUrl)}" target="_blank" rel="noopener">View on Steam</a>
+      <button class="secondary" data-action="remove">Remove</button>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('[data-action="remove"]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const appid = btn.closest('.chest-row').dataset.appid;
+      try {
+        await fetchJson(`/api/chest/${appid}`, { method: 'DELETE' });
+        loadChest();
+      } catch (err) {
+        showToast(err.message);
+      }
+    });
+  });
+}
+
+async function loadChest() {
+  appEl.innerHTML = `<p class="loading">Loading your Game Chest&hellip;</p>`;
+  try {
+    const currency = getSavedCurrency();
+    const [currencies, data] = await Promise.all([
+      ensureCurrencies(),
+      fetchJson(`/api/chest?currency=${encodeURIComponent(currency)}`),
+    ]);
+    if (currentView !== 'chest') return;
+    if (data.unauthenticated) {
+      renderLoggedOut();
+      return;
+    }
+    renderChestView(data.games, currencies, currency);
+  } catch (err) {
+    appEl.innerHTML = `<p class="error">Something went wrong loading your Game Chest: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
 let currentView = 'friends';
 
 function switchView(view) {
@@ -530,8 +766,10 @@ function switchView(view) {
   });
   if (view === 'friends') {
     loadCommonGames();
-  } else {
+  } else if (view === 'groups') {
     loadGroups();
+  } else if (view === 'chest') {
+    loadChest();
   }
 }
 
@@ -545,7 +783,6 @@ async function init() {
   renderAccount(me);
 
   const nav = document.getElementById('view-nav');
-  nav.hidden = false;
   nav.querySelectorAll('.nav-tab').forEach((btn) => {
     btn.addEventListener('click', () => switchView(btn.dataset.view));
   });

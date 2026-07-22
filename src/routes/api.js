@@ -4,6 +4,9 @@ const { getPlayerSummariesCached, getOwnedGamesCached, getFriendList, FriendsLis
 const { getCommonGamesForUser, getGroupCommonGames } = require('../services/commonGames');
 const configStore = require('../services/configStore');
 const groupStore = require('../services/groupStore');
+const chestStore = require('../services/chestStore');
+const steamStore = require('../services/steamStore');
+const discovery = require('../services/discovery');
 
 const router = express.Router();
 
@@ -118,6 +121,96 @@ router.get('/friends', requireAuth, async (req, res) => {
     console.error('GET /api/friends failed:', err);
     res.status(500).json({ error: 'internal-error', message: err.message });
   }
+});
+
+router.get('/currencies', requireAuth, (req, res) => {
+  res.json({ currencies: steamStore.CURRENCIES });
+});
+
+router.get('/friends/:steamid/recommendations', requireAuth, async (req, res) => {
+  try {
+    const friendId = req.params.steamid;
+    const friendIds = await getFriendList(req.session.steamid);
+    if (!friendIds.includes(friendId)) {
+      return res.status(400).json({ error: 'not-a-friend', message: 'That steamid is not in your friends list.' });
+    }
+
+    const currency = steamStore.CURRENCIES.some((c) => c.code === req.query.currency) ? req.query.currency : 'GBP';
+    const cc = steamStore.currencyToCc(currency);
+
+    const maxPriceMajor = Number(req.query.maxPrice);
+    if (!Number.isFinite(maxPriceMajor) || maxPriceMajor < 0) {
+      return res.status(400).json({ error: 'invalid-budget', message: 'maxPrice must be a non-negative number.' });
+    }
+    const maxPriceMinor = Math.round(maxPriceMajor * 100);
+
+    const seenAppIds = (req.query.seen || '').split(',').map((s) => s.trim()).filter(Boolean);
+    const multiplayerOnly = req.query.multiplayerOnly === 'true';
+
+    const data = await discovery.discoverGames({
+      userId: req.session.steamid,
+      friendId,
+      maxPriceMinor,
+      cc,
+      seenAppIds,
+      multiplayerOnly,
+    });
+
+    res.json(data);
+  } catch (err) {
+    if (err instanceof FriendsListPrivateError) {
+      return res.status(400).json({ error: 'friends-private', message: 'Your friends list is private.' });
+    }
+    console.error('GET /api/friends/:steamid/recommendations failed:', err);
+    res.status(500).json({ error: 'internal-error', message: err.message });
+  }
+});
+
+router.get('/chest', requireAuth, async (req, res) => {
+  try {
+    const currency = steamStore.CURRENCIES.some((c) => c.code === req.query.currency) ? req.query.currency : 'GBP';
+    const cc = steamStore.currencyToCc(currency);
+
+    const entries = chestStore.listChest(req.session.steamid);
+    const games = await Promise.all(entries.map(async (entry) => {
+      const details = await steamStore.getAppDetails(entry.appid, cc).catch(() => null);
+      return {
+        appid: entry.appid,
+        savedAt: entry.savedAt,
+        name: details?.name ?? `App ${entry.appid}`,
+        headerImage: details?.header_image ?? null,
+        isFree: Boolean(details?.is_free),
+        price: details?.price_overview ? {
+          currency: details.price_overview.currency,
+          finalMinor: details.price_overview.final,
+          initialMinor: details.price_overview.initial,
+          discountPercent: details.price_overview.discount_percent,
+          finalFormatted: details.price_overview.final_formatted,
+        } : null,
+        storeUrl: `https://store.steampowered.com/app/${entry.appid}`,
+      };
+    }));
+
+    res.json({ games });
+  } catch (err) {
+    console.error('GET /api/chest failed:', err);
+    res.status(500).json({ error: 'internal-error', message: err.message });
+  }
+});
+
+router.post('/chest', requireAuth, (req, res) => {
+  const appid = Number(req.body?.appid);
+  if (!Number.isInteger(appid) || appid <= 0) {
+    return res.status(400).json({ error: 'invalid-appid', message: 'A valid appid is required.' });
+  }
+  chestStore.addToChest(req.session.steamid, appid);
+  res.status(201).json({ ok: true });
+});
+
+router.delete('/chest/:appid', requireAuth, (req, res) => {
+  const appid = Number(req.params.appid);
+  chestStore.removeFromChest(req.session.steamid, appid);
+  res.json({ ok: true });
 });
 
 async function enrichGroup(group) {
