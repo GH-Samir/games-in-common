@@ -3,10 +3,16 @@ const { mapWithConcurrency } = require('./commonGames');
 const steamStore = require('./steamStore');
 
 const CONCURRENCY_LIMIT = 8;
-const TOP_GAMES_FOR_GENRE_PROFILE = 25;
 const TOP_GENRES_FOR_DISCOVERY = 3;
 const RESULTS_PER_PAGE = 6;
 const MAX_CANDIDATES_TO_SCAN = 60;
+
+// Per-person cap on how many of their top-playtime games get genre-profiled.
+// Keeps a 2-person friend comparison as thorough as before (~25 each) while
+// bounding the total appdetails calls for a large group (e.g. 32 members).
+function topGamesCapFor(peopleCount) {
+  return Math.max(8, Math.round(200 / peopleCount));
+}
 
 // Used when neither party's library is visible enough to build a genre
 // profile from, so discovery still has somewhere reasonable to start.
@@ -18,13 +24,13 @@ function isMultiplayer(details) {
   return (details.categories ?? []).some((c) => MULTIPLAYER_CATEGORY_PATTERN.test(c.description ?? ''));
 }
 
-async function buildGenreProfile(steamid, cc) {
+async function buildGenreProfile(steamid, cc, topGamesCap) {
   const { gamesVisible, games } = await getOwnedGamesCached(steamid);
   if (!gamesVisible) return null;
 
   const topGames = [...games]
     .sort((a, b) => (b.playtime_forever ?? 0) - (a.playtime_forever ?? 0))
-    .slice(0, TOP_GAMES_FOR_GENRE_PROFILE);
+    .slice(0, topGamesCap);
 
   const genreHours = new Map();
 
@@ -40,14 +46,12 @@ async function buildGenreProfile(steamid, cc) {
   return { genreHours, ownedAppIds: new Set(games.map((g) => g.appid)) };
 }
 
-async function getSharedGenreProfile(userId, friendId, cc) {
-  const [userProfile, friendProfile] = await Promise.all([
-    buildGenreProfile(userId, cc),
-    friendId ? buildGenreProfile(friendId, cc) : Promise.resolve(null),
-  ]);
+async function getCombinedGenreProfile(steamids, cc) {
+  const topGamesCap = topGamesCapFor(steamids.length);
+  const profiles = await Promise.all(steamids.map((id) => buildGenreProfile(id, cc, topGamesCap)));
 
   const combined = new Map();
-  for (const profile of [userProfile, friendProfile]) {
+  for (const profile of profiles) {
     if (!profile) continue;
     for (const [genre, hours] of profile.genreHours) {
       combined.set(genre, (combined.get(genre) ?? 0) + hours);
@@ -58,21 +62,14 @@ async function getSharedGenreProfile(userId, friendId, cc) {
     .sort((a, b) => b[1] - a[1])
     .map(([genre]) => genre);
 
-  const ownedAppIds = new Set([
-    ...(userProfile?.ownedAppIds ?? []),
-    ...(friendProfile?.ownedAppIds ?? []),
-  ]);
+  const ownedAppIds = new Set(profiles.flatMap((p) => (p ? [...p.ownedAppIds] : [])));
+  const visibleCount = profiles.filter(Boolean).length;
 
-  return {
-    genres,
-    bothVisible: Boolean(userProfile && friendProfile),
-    anyVisible: Boolean(userProfile || friendProfile),
-    ownedAppIds,
-  };
+  return { genres, ownedAppIds, visibleCount, totalCount: steamids.length };
 }
 
-async function discoverGames({ userId, friendId, maxPriceMinor, cc, seenAppIds = [], multiplayerOnly = false }) {
-  const profile = await getSharedGenreProfile(userId, friendId, cc);
+async function discoverGames({ steamids, maxPriceMinor, cc, seenAppIds = [], multiplayerOnly = false }) {
+  const profile = await getCombinedGenreProfile(steamids, cc);
 
   const genresToUse = (profile.genres.length > 0 ? profile.genres : POPULAR_FALLBACK_GENRES)
     .slice(0, TOP_GENRES_FOR_DISCOVERY);
@@ -127,7 +124,7 @@ async function discoverGames({ userId, friendId, maxPriceMinor, cc, seenAppIds =
     });
   }
 
-  return { genres: genresToUse, bothVisible: profile.bothVisible, games };
+  return { genres: genresToUse, visibleCount: profile.visibleCount, totalCount: profile.totalCount, games };
 }
 
-module.exports = { getSharedGenreProfile, discoverGames };
+module.exports = { getCombinedGenreProfile, discoverGames };

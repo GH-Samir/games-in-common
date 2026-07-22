@@ -118,7 +118,12 @@ function renderFriendCard(friend) {
   });
 
   body.appendChild(gameList);
-  body.appendChild(renderDiscoverySection(friend));
+  body.appendChild(renderDiscoverySection(
+    '🎮 Find new games we might like',
+    'friend-discovery',
+    `/api/friends/${friend.steamid}/recommendations`,
+    'you both'
+  ));
 
   card.appendChild(header);
   card.appendChild(body);
@@ -164,7 +169,7 @@ async function saveToChest(appid) {
   }
 }
 
-async function buildDiscoveryPanel(friend, panel) {
+async function buildDiscoveryPanel(endpoint, panel, { noteWho }) {
   const currencies = await ensureCurrencies();
 
   panel.innerHTML = `
@@ -194,12 +199,16 @@ async function buildDiscoveryPanel(friend, panel) {
   let seenAppIds = [];
 
   function renderResults(data) {
-    const { games, genres, bothVisible } = data;
+    const { games, genres, visibleCount, totalCount } = data;
     let html = '';
 
     if (genres?.length > 0) {
-      const who = bothVisible ? 'you both' : 'you';
-      html += `<p class="discovery-note">Prioritizing genres ${who} play most: ${genres.map(escapeHtml).join(', ')}</p>`;
+      const who = totalCount === 2 && visibleCount < 2 ? 'you' : noteWho;
+      let note = `Prioritizing genres ${who} play most: ${genres.map(escapeHtml).join(', ')}`;
+      if (totalCount > 2 && visibleCount < totalCount) {
+        note += ` (${visibleCount} of ${totalCount} libraries visible)`;
+      }
+      html += `<p class="discovery-note">${note}</p>`;
     }
 
     if (games.length === 0) {
@@ -245,7 +254,7 @@ async function buildDiscoveryPanel(friend, panel) {
     resultsEl.innerHTML = `<p class="loading">Finding games&hellip;</p>`;
     try {
       const params = new URLSearchParams({ currency, maxPrice: budget, multiplayerOnly: String(multiplayerOnly), seen: seenAppIds.join(',') });
-      const data = await fetchJson(`/api/friends/${friend.steamid}/recommendations?${params}`);
+      const data = await fetchJson(`${endpoint}?${params}`);
       seenAppIds.push(...data.games.map((g) => g.appid));
       renderResults(data);
     } catch (err) {
@@ -258,10 +267,10 @@ async function buildDiscoveryPanel(friend, panel) {
   search(true);
 }
 
-function renderDiscoverySection(friend) {
+function renderDiscoverySection(buttonLabel, className, endpoint, noteWho) {
   const container = document.createElement('div');
-  container.className = 'friend-discovery';
-  container.innerHTML = `<button class="secondary" data-action="find-games">🎮 Find new games we might like</button>`;
+  container.className = className;
+  container.innerHTML = `<button class="secondary" data-action="find-games">${buttonLabel}</button>`;
 
   const panel = document.createElement('div');
   panel.className = 'discovery-panel';
@@ -275,7 +284,7 @@ function renderDiscoverySection(friend) {
     panel.hidden = !panel.hidden;
     if (!panel.hidden && !panelBuilt) {
       panelBuilt = true;
-      buildDiscoveryPanel(friend, panel);
+      buildDiscoveryPanel(endpoint, panel, { noteWho });
     }
   });
 
@@ -627,9 +636,17 @@ function renderGroupCard(group) {
     loadGroupCommonGames(group, commonGamesSection.querySelector('.group-common-games-results'));
   });
 
+  const groupDiscoverySection = renderDiscoverySection(
+    '🎮 Find new games for this group',
+    'group-discovery',
+    `/api/groups/${group.id}/recommendations`,
+    'your group'
+  );
+
   body.appendChild(memberList);
   body.appendChild(addMember);
   body.appendChild(commonGamesSection);
+  body.appendChild(groupDiscoverySection);
 
   card.appendChild(header);
   card.appendChild(actions);

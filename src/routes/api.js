@@ -148,8 +148,7 @@ router.get('/friends/:steamid/recommendations', requireAuth, async (req, res) =>
     const multiplayerOnly = req.query.multiplayerOnly === 'true';
 
     const data = await discovery.discoverGames({
-      userId: req.session.steamid,
-      friendId,
+      steamids: [req.session.steamid, friendId],
       maxPriceMinor,
       cc,
       seenAppIds,
@@ -162,6 +161,40 @@ router.get('/friends/:steamid/recommendations', requireAuth, async (req, res) =>
       return res.status(400).json({ error: 'friends-private', message: 'Your friends list is private.' });
     }
     console.error('GET /api/friends/:steamid/recommendations failed:', err);
+    res.status(500).json({ error: 'internal-error', message: err.message });
+  }
+});
+
+router.get('/groups/:id/recommendations', requireAuth, async (req, res) => {
+  try {
+    const group = groupStore.listGroups(req.session.steamid).find((g) => g.id === req.params.id);
+    if (!group) {
+      return res.status(404).json({ error: 'not-found', message: 'Group not found.' });
+    }
+
+    const currency = steamStore.CURRENCIES.some((c) => c.code === req.query.currency) ? req.query.currency : 'GBP';
+    const cc = steamStore.currencyToCc(currency);
+
+    const maxPriceMajor = Number(req.query.maxPrice);
+    if (!Number.isFinite(maxPriceMajor) || maxPriceMajor < 0) {
+      return res.status(400).json({ error: 'invalid-budget', message: 'maxPrice must be a non-negative number.' });
+    }
+    const maxPriceMinor = Math.round(maxPriceMajor * 100);
+
+    const seenAppIds = (req.query.seen || '').split(',').map((s) => s.trim()).filter(Boolean);
+    const multiplayerOnly = req.query.multiplayerOnly === 'true';
+
+    const data = await discovery.discoverGames({
+      steamids: [req.session.steamid, ...group.members],
+      maxPriceMinor,
+      cc,
+      seenAppIds,
+      multiplayerOnly,
+    });
+
+    res.json(data);
+  } catch (err) {
+    console.error('GET /api/groups/:id/recommendations failed:', err);
     res.status(500).json({ error: 'internal-error', message: err.message });
   }
 });
