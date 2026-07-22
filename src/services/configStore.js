@@ -42,4 +42,4 @@ function setSteamApiKey(key) {
   writeStoredConfig({ ...stored, steamApiKey: key });
 }
 
-module.exports = { getConfig, setSteamApiKey };
+module.exports = { getConfig, setSteamApiKey, dataDir: configDir };

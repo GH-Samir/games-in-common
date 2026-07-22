@@ -101,4 +101,78 @@ async function getCommonGamesForUser(mySteamId, onProgress) {
   };
 }
 
-module.exports = { getCommonGamesForUser, intersectGames, mapWithConcurrency };
+function intersectGamesAcross(players) {
+  if (players.length === 0) return [];
+
+  let commonAppIds = new Set(players[0].gamesById.keys());
+  for (const player of players.slice(1)) {
+    commonAppIds = new Set([...commonAppIds].filter((id) => player.gamesById.has(id)));
+  }
+
+  const common = [];
+  for (const appid of commonAppIds) {
+    common.push({
+      appid,
+      name: players[0].gamesById.get(appid).name,
+      playtimes: players.map((p) => ({
+        steamid: p.steamid,
+        name: p.name,
+        avatar: p.avatar,
+        minutes: p.gamesById.get(appid)?.playtime_forever ?? 0,
+      })),
+    });
+  }
+
+  common.sort((a, b) => {
+    const totalA = a.playtimes.reduce((sum, p) => sum + p.minutes, 0);
+    const totalB = b.playtimes.reduce((sum, p) => sum + p.minutes, 0);
+    return totalB - totalA;
+  });
+
+  return common;
+}
+
+// N-way intersection across the logged-in user and every group member, unlike
+// intersectGames() above which is pairwise (user vs. one friend at a time).
+async function getGroupCommonGames(ownerId, memberIds, onProgress) {
+  const allIds = [ownerId, ...memberIds];
+  onProgress?.(0, allIds.length);
+
+  const results = await mapWithConcurrency(
+    allIds,
+    CONCURRENCY_LIMIT,
+    async (steamid) => ({ steamid, ...(await getOwnedGamesCached(steamid)) }),
+    onProgress
+  );
+
+  const summaries = await getPlayerSummariesCached(allIds);
+
+  const players = [];
+  const excludedMembers = [];
+
+  results.forEach((result, i) => {
+    const steamid = allIds[i];
+    const summary = summaries.get(steamid);
+    const name = summary?.personaname ?? 'Unknown';
+    const avatar = summary?.avatarmedium ?? null;
+
+    if (result.error || !result.gamesVisible) {
+      excludedMembers.push({ steamid, name, avatar });
+      return;
+    }
+
+    players.push({
+      steamid,
+      name,
+      avatar,
+      gamesById: new Map(result.games.map((g) => [g.appid, g])),
+    });
+  });
+
+  return {
+    commonGames: players.length > 0 ? intersectGamesAcross(players) : [],
+    excludedMembers,
+  };
+}
+
+module.exports = { getCommonGamesForUser, getGroupCommonGames, intersectGames, mapWithConcurrency };

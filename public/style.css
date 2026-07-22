@@ -229,3 +229,159 @@ main {
 }
 
 .toast[hidden] { display: none; }
+
+.view-nav {
+  display: flex;
+  gap: 4px;
+  max-width: 720px;
+  margin: 16px auto 0;
+  padding: 0 24px;
+}
+
+.view-nav[hidden] { display: none; }
+
+.nav-tab {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid transparent;
+  border-radius: 8px 8px 0 0;
+  padding: 8px 16px;
+}
+
+.nav-tab:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.nav-tab.active {
+  background: var(--panel);
+  border-color: var(--border);
+  border-bottom-color: transparent;
+  color: var(--text);
+}
+
+.create-group-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.create-group-form input[type="text"] {
+  flex: 1;
+  padding: 10px 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+}
+
+.create-group-form select {
+  padding: 10px 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+}
+
+.group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.group-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+}
+
+.group-header:hover {
+  background: var(--panel-hover);
+}
+
+.group-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.group-size-label {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  text-transform: capitalize;
+}
+
+.group-actions {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 12px;
+}
+
+.group-actions button {
+  font-size: 0.85rem;
+  padding: 6px 12px;
+}
+
+.group-body {
+  border-top: 1px solid var(--border);
+  padding: 12px 16px;
+}
+
+.member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.member-row, .picker-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.member-row img, .picker-row img {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+}
+
+.member-name {
+  flex: 1;
+}
+
+.add-member .search-input {
+  margin-bottom: 8px;
+}
+
+.friend-picker-results {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.picker-row button {
+  font-size: 0.85rem;
+  padding: 6px 12px;
+}
+
+.group-common-games {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+.group-common-games .game-list {
+  border-top: none;
+  padding: 12px 0 0;
+}
