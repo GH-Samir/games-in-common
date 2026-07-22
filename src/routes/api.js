@@ -82,7 +82,17 @@ router.get('/common-games/stream', requireAuth, async (req, res) => {
     Connection: 'keep-alive',
   });
 
-  const send = (payload) => res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  // If the client disconnects mid-stream (closes the tab, navigates away),
+  // writing to the socket afterward throws an unhandled 'error' event that
+  // would otherwise crash the whole process — guard against both halves.
+  let closed = false;
+  req.on('close', () => { closed = true; });
+  res.on('error', () => {});
+
+  const send = (payload) => {
+    if (closed) return;
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  };
 
   try {
     const data = await getCommonGamesForUser(req.session.steamid, (completed, total) => {
@@ -98,7 +108,7 @@ router.get('/common-games/stream', requireAuth, async (req, res) => {
     }
   }
 
-  res.end();
+  if (!closed) res.end();
 });
 
 router.get('/friends', requireAuth, async (req, res) => {
@@ -242,6 +252,9 @@ router.post('/chest', requireAuth, (req, res) => {
 
 router.delete('/chest/:appid', requireAuth, (req, res) => {
   const appid = Number(req.params.appid);
+  if (!Number.isInteger(appid) || appid <= 0) {
+    return res.status(400).json({ error: 'invalid-appid', message: 'A valid appid is required.' });
+  }
   chestStore.removeFromChest(req.session.steamid, appid);
   res.json({ ok: true });
 });
@@ -361,13 +374,21 @@ router.get('/groups/:id/common-games/stream', requireAuth, async (req, res) => {
     Connection: 'keep-alive',
   });
 
-  const send = (payload) => res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  let closed = false;
+  req.on('close', () => { closed = true; });
+  res.on('error', () => {});
+
+  const send = (payload) => {
+    if (closed) return;
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  };
 
   try {
     const group = groupStore.listGroups(req.session.steamid).find((g) => g.id === req.params.id);
     if (!group) {
       send({ type: 'error', message: 'Group not found' });
-      return res.end();
+      if (!closed) res.end();
+      return;
     }
 
     const data = await getGroupCommonGames(req.session.steamid, group.members, (completed, total) => {
@@ -379,7 +400,7 @@ router.get('/groups/:id/common-games/stream', requireAuth, async (req, res) => {
     send({ type: 'error', message: err.message });
   }
 
-  res.end();
+  if (!closed) res.end();
 });
 
 module.exports = router;

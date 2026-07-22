@@ -12,6 +12,16 @@ function createApp() {
 
   app.use(express.json());
 
+  // A client disconnecting mid-request (closed tab, navigated away) leaves
+  // the response socket torn down; writing to it afterward (particularly
+  // during long SSE streams or slow discovery requests) fires an unhandled
+  // 'error' event that would otherwise crash the whole process. This is a
+  // blanket safety net so no route needs to remember to guard against it.
+  app.use((req, res, next) => {
+    res.on('error', () => {});
+    next();
+  });
+
   app.use((req, res, next) => {
     const { steamApiKey } = configStore.getConfig();
     if (steamApiKey) return next();
