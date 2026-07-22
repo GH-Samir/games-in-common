@@ -10,7 +10,7 @@ const discovery = require('../services/discovery');
 
 const router = express.Router();
 
-// Gabe Newell's public steamid — a stable id to sanity-check a candidate API key against.
+// Gabe Newell's public steamid - a stable id to sanity-check a candidate API key against.
 const TEST_STEAMID = '76561197960435530';
 
 router.post('/config/steam-key', async (req, res) => {
@@ -83,8 +83,9 @@ router.get('/common-games/stream', requireAuth, async (req, res) => {
   });
 
   // If the client disconnects mid-stream (closes the tab, navigates away),
-  // writing to the socket afterward throws an unhandled 'error' event that
-  // would otherwise crash the whole process — guard against both halves.
+  // avoid writing to the torn-down socket - wasted work at best, and cheap
+  // insurance against write-after-close behaving differently on some
+  // platform/Node version than it does here.
   let closed = false;
   req.on('close', () => { closed = true; });
   res.on('error', () => {});

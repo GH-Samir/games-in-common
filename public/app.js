@@ -69,7 +69,7 @@ function askToPlay(friend, game) {
     navigator.clipboard.writeText(message).catch(() => {});
   }
 
-  showToast(`Copied "${message}" — paste it in the Steam chat that just opened.`);
+  showToast(`Copied "${message}" - paste it in the Steam chat that just opened.`);
 }
 
 function renderFriendCard(friend) {
@@ -418,7 +418,7 @@ function createGroupChat(group) {
   }
 
   const extra = rest.length > 0
-    ? ` Add the other ${rest.length} with the "+" button in that chat — the full roster is on your clipboard.`
+    ? ` Add the other ${rest.length} with the "+" button in that chat - the full roster is on your clipboard.`
     : '';
   showToast(`Opened a chat with ${first.name}.${extra}`);
 }
@@ -659,9 +659,9 @@ function renderGroupsView(groups) {
     <form id="create-group-form" class="create-group-form">
       <input type="text" id="group-name-input" placeholder="Group name" required maxlength="60">
       <select id="group-size-select">
-        <option value="small">Small — up to 6</option>
-        <option value="medium">Medium — up to 10</option>
-        <option value="large">Large — up to 32</option>
+        <option value="small">Small - up to 6</option>
+        <option value="medium">Medium - up to 10</option>
+        <option value="large">Large - up to 32</option>
       </select>
       <button type="submit">Create group</button>
     </form>
@@ -686,7 +686,7 @@ function renderGroupsView(groups) {
 
   const list = document.getElementById('group-list');
   if (groups.length === 0) {
-    list.innerHTML = `<p class="empty">No groups yet — create one above.</p>`;
+    list.innerHTML = `<p class="empty">No groups yet - create one above.</p>`;
     return;
   }
   for (const group of groups) {
@@ -838,8 +838,8 @@ function renderSettings() {
         </div>
         <div class="settings-row">
           <div class="settings-label">
-            <div class="settings-label-title">Accent color</div>
-            <div class="settings-label-desc">Pick the color used for buttons and highlights.</div>
+            <div class="settings-label-title">Accent colour</div>
+            <div class="settings-label-desc">Pick the colour used for buttons and highlights.</div>
           </div>
           <div class="accent-swatches" data-setting="accent">
             ${ACCENT_OPTIONS.map((a) => `<button type="button" class="accent-swatch ${a === currentAccent ? 'active' : ''}" data-value="${a}" title="${a[0].toUpperCase()}${a.slice(1)}"></button>`).join('')}
