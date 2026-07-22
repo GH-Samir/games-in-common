@@ -1,6 +1,6 @@
 {
   "name": "games-in-common",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Find Steam games you have in common with your friends and ask them to play.",
   "author": "samir <mandalsam@outlook.com>",
   "main": "electron/main.js",
