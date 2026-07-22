@@ -1,5 +1,5 @@
 const path = require('path');
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, Menu } = require('electron');
 
 const CHROME_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
@@ -13,6 +13,8 @@ process.env.BASE_URL = `http://localhost:${PORT}`;
 let mainWindow;
 
 function createWindow(baseUrl) {
+  Menu.setApplicationMenu(null);
+
   mainWindow = new BrowserWindow({
     width: 900,
     height: 700,

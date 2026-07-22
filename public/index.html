@@ -2,25 +2,36 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script src="/theme-init.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Games in Common</title>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<header class="topbar">
-  <h1>Games in Common</h1>
-  <div id="account"></div>
-</header>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect class="brand-mark-bg" width="32" height="32" rx="8"></rect>
+        <path class="brand-mark-fg" d="M9 20L13 12L16 18L19 12L23 20" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+      <span>Games in Common</span>
+    </div>
 
-<nav class="view-nav" id="view-nav" hidden>
-  <button class="nav-tab active" data-view="friends">Friends</button>
-  <button class="nav-tab" data-view="groups">Groups</button>
-  <button class="nav-tab" data-view="chest">Game Chest</button>
-</nav>
+    <nav class="view-nav" id="view-nav" hidden>
+      <button class="nav-tab active" data-view="friends"><span class="nav-icon">👥</span><span class="nav-label">Friends</span></button>
+      <button class="nav-tab" data-view="groups"><span class="nav-icon">👪</span><span class="nav-label">Groups</span></button>
+      <button class="nav-tab" data-view="chest"><span class="nav-icon">🧰</span><span class="nav-label">Game Chest</span></button>
+      <button class="nav-tab" data-view="settings"><span class="nav-icon">⚙️</span><span class="nav-label">Settings</span></button>
+    </nav>
 
-<main id="app">
-  <p class="loading">Loading&hellip;</p>
-</main>
+    <div id="account" class="sidebar-profile"></div>
+  </aside>
+
+  <main id="app" class="main-content">
+    <p class="loading">Loading&hellip;</p>
+  </main>
+</div>
 
 <div id="toast" class="toast" hidden></div>
 

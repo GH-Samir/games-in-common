@@ -774,6 +774,125 @@ async function loadChest() {
   }
 }
 
+const ACCENT_OPTIONS = ['blue', 'violet', 'emerald', 'amber'];
+
+function getPref(key, fallback) {
+  return localStorage.getItem(key) || fallback;
+}
+
+function resolveTheme(theme) {
+  if (theme !== 'system') return theme;
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function applyTheme(theme) {
+  localStorage.setItem('gic-theme', theme);
+  document.documentElement.setAttribute('data-theme', resolveTheme(theme));
+}
+
+function applyAccent(accent) {
+  localStorage.setItem('gic-accent', accent);
+  document.documentElement.setAttribute('data-accent', accent);
+}
+
+function applyDensity(density) {
+  localStorage.setItem('gic-density', density);
+  document.documentElement.setAttribute('data-density', density);
+}
+
+function applyReduceMotion(enabled) {
+  localStorage.setItem('gic-reduce-motion', String(enabled));
+  document.documentElement.setAttribute('data-reduce-motion', String(enabled));
+}
+
+// Keep the resolved theme in sync with the OS while the user has "System" selected.
+if (window.matchMedia) {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (getPref('gic-theme', 'system') === 'system') {
+      document.documentElement.setAttribute('data-theme', resolveTheme('system'));
+    }
+  });
+}
+
+function renderSettings() {
+  const currentTheme = getPref('gic-theme', 'system');
+  const currentAccent = getPref('gic-accent', 'blue');
+  const currentDensity = getPref('gic-density', 'comfortable');
+  const currentReduceMotion = localStorage.getItem('gic-reduce-motion') === 'true';
+
+  appEl.innerHTML = `
+    <h1>Settings</h1>
+    <div class="settings-view">
+      <section class="settings-section">
+        <h2>Appearance</h2>
+        <div class="settings-row">
+          <div class="settings-label">
+            <div class="settings-label-title">Theme</div>
+            <div class="settings-label-desc">Choose how Games in Common looks.</div>
+          </div>
+          <div class="segmented" data-setting="theme">
+            <button type="button" data-value="light" class="${currentTheme === 'light' ? 'active' : ''}">Light</button>
+            <button type="button" data-value="dark" class="${currentTheme === 'dark' ? 'active' : ''}">Dark</button>
+            <button type="button" data-value="system" class="${currentTheme === 'system' ? 'active' : ''}">System</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">
+            <div class="settings-label-title">Accent color</div>
+            <div class="settings-label-desc">Pick the color used for buttons and highlights.</div>
+          </div>
+          <div class="accent-swatches" data-setting="accent">
+            ${ACCENT_OPTIONS.map((a) => `<button type="button" class="accent-swatch ${a === currentAccent ? 'active' : ''}" data-value="${a}" title="${a[0].toUpperCase()}${a.slice(1)}"></button>`).join('')}
+          </div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">
+            <div class="settings-label-title">Density</div>
+            <div class="settings-label-desc">Compact fits more on screen; comfortable is roomier.</div>
+          </div>
+          <div class="segmented" data-setting="density">
+            <button type="button" data-value="comfortable" class="${currentDensity === 'comfortable' ? 'active' : ''}">Comfortable</button>
+            <button type="button" data-value="compact" class="${currentDensity === 'compact' ? 'active' : ''}">Compact</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">
+            <div class="settings-label-title">Reduce motion</div>
+            <div class="settings-label-desc">Turn off transitions and animations.</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="reduce-motion-toggle" ${currentReduceMotion ? 'checked' : ''}>
+            <span class="switch-track"></span>
+          </label>
+        </div>
+      </section>
+    </div>
+  `;
+
+  appEl.querySelectorAll('.segmented[data-setting]').forEach((group) => {
+    const setting = group.dataset.setting;
+    group.querySelectorAll('button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const value = btn.dataset.value;
+        if (setting === 'theme') applyTheme(value);
+        else if (setting === 'density') applyDensity(value);
+        group.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn));
+      });
+    });
+  });
+
+  appEl.querySelectorAll('.accent-swatch').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      applyAccent(btn.dataset.value);
+      appEl.querySelectorAll('.accent-swatch').forEach((b) => b.classList.toggle('active', b === btn));
+    });
+  });
+
+  document.getElementById('reduce-motion-toggle').addEventListener('change', (e) => {
+    applyReduceMotion(e.target.checked);
+  });
+}
+
 let currentView = 'friends';
 
 function switchView(view) {
@@ -787,6 +906,8 @@ function switchView(view) {
     loadGroups();
   } else if (view === 'chest') {
     loadChest();
+  } else if (view === 'settings') {
+    renderSettings();
   }
 }
 
